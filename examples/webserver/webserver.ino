@@ -1,8 +1,8 @@
 #define ENABLE_SINRIC_TELEPORT_LOG
 
 #include <WiFi.h>
-#include "SinricTeleport.h"
 #include <WebServer.h>
+#include "SinricTeleport.h"
 
 #define BAUD_RATE 115200
 
@@ -14,7 +14,7 @@ const std::string pubkey = "";
 
 WebServer server(80);
 
-/* Expose WebServer running on port 80 */
+/* Expose WebServer running on port 80 via Sinric Teleport */
 SinricTeleport teleport(pubkey, privkey, "127.0.0.1", 80);
 
 void handle_root() {
@@ -47,11 +47,10 @@ void setup() {
   while (!Serial) {};
  
   setup_wifi();
-
   setup_webserver();
 
-  teleport.begin();
-   
+  // Start Teleport
+  teleport.begin();   
 }
 
 void loop(){

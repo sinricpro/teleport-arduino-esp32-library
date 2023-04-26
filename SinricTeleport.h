@@ -35,14 +35,17 @@
 
 class SinricTeleport {
   public:
-    SinricTeleport(const std::string &publicKey, const std::string &privateKey,
-                   const std::string &localIP, int localPort) : publicKey(publicKey), privateKey(privateKey), localIP(localIP), localPort(localPort) {}
+    SinricTeleport(const char *publicKey, const char *privateKey,
+                   const char *localIP, int localPort) : publicKey(publicKey), privateKey(privateKey), localIP(localIP), localPort(localPort) {}
 
     void begin();
 
+    void onConnected(void (*connectedCallback)(void));
+    void onDisconnected(void (*connectedCallback)(void));
+
   private:
-    std::string privateKey;
-    std::string publicKey;
+    const char * privateKey;
+    const char * publicKey;
 
     const char *teleportServerIP = "5.161.193.42";
     int teleportServerPort = 8443;
@@ -50,7 +53,7 @@ class SinricTeleport {
     const char *teleportServerListenHost = "localhost"; /* determined by server */
     int teleportServerDynaGotPort; /* determined by server */
 
-    std::string localIP = "127.0.0.1";
+    const char * localIP = "127.0.0.1";
     int localPort = 80;
 
     static void teleportTask(void * parameter);
@@ -60,10 +63,23 @@ class SinricTeleport {
     
     bool isStartingWith(const std::string& str, const std::string& prefix);
     bool isEndingWith(const std::string& str, const std::string& ending);
-  
+
+    int waitSocket(int socket_fd, LIBSSH2_SESSION *session);
     int forwardTunnel(LIBSSH2_SESSION *session, LIBSSH2_CHANNEL *channel);
+
+    void (*connectedCallback)(void) = nullptr;
+    void (*disconnectedCallback)(void) = nullptr;
+
 };
- 
+
+void SinricTeleport::onConnected(void (*callback)(void)) {
+    this->connectedCallback = callback;
+}
+
+void SinricTeleport::onDisconnected(void (*callback)(void)) {
+    this->disconnectedCallback = callback;
+}
+
 void SinricTeleport::teleportTask(void * pvParameters) {
   SinricTeleport *l_pThis = (SinricTeleport *) pvParameters;
 
@@ -131,18 +147,22 @@ void SinricTeleport::teleportTask(void * pvParameters) {
   DEBUG_TELEPORT("\n");
 
   if (fingerprint && strcmp(pubkey_md5, fingerprint)) {
-    DEBUG_TELEPORT("[Teleport]: fingerprint matched!\n");
+    DEBUG_TELEPORT("[Teleport]: Fingerprint matched!\n");
   } else {
     Serial.printf("Teleport server fingerprint match failed!\n");
     return;
   }
 
   const char* passphrase = NULL;
-  const char* user = "libssh2";
+  //const char* user = "libssh2";
   size_t pubkeylen;
   size_t privkeylen;
 
-  rc = libssh2_userauth_publickey_frommemory(session, user, strlen(user), l_pThis->publicKey.c_str(), l_pThis->publicKey.size(), l_pThis->privateKey.c_str(), l_pThis->privateKey.size(), passphrase);
+  char buffer[32];
+  sprintf(buffer, "%s:%d", l_pThis->localIP, l_pThis->localPort);
+  const char *user = const_cast<const char *>(buffer);
+
+  rc = libssh2_userauth_publickey_frommemory(session, user, strlen(user), l_pThis->publicKey, strlen(l_pThis->publicKey), l_pThis->privateKey, strlen(l_pThis->privateKey), passphrase);
 
   if (rc != 0) {
     Serial.printf("[Teleport]: Authenticate the session with a public key failed.!\n");
@@ -162,8 +182,12 @@ void SinricTeleport::teleportTask(void * pvParameters) {
     goto shutdown;
   }
 
+  if(l_pThis->connectedCallback != nullptr) {
+    l_pThis->connectedCallback();
+  }
+
   while (1) {
-    Serial.printf("[Teleport]: Waiting for remote connection ..\n");
+    DEBUG_TELEPORT("[Teleport]: Waiting for remote connection ..\n");
     channel = libssh2_channel_forward_accept(listener);
 
     if (!channel) {
@@ -187,8 +211,34 @@ shutdown:
   libssh2_session_free(session);
   close(sock);
   libssh2_exit();
-  vTaskDelete( NULL );
+
+  if(l_pThis->disconnectedCallback != nullptr) {
+    l_pThis->disconnectedCallback();
+  }
+
   return;
+}
+
+int SinricTeleport::waitSocket(int socket_fd, LIBSSH2_SESSION *session) {
+    struct timeval timeout;
+    int rc;
+    fd_set fd;
+    fd_set *writefd = NULL;
+    fd_set *readfd = NULL;
+    int dir;
+    timeout.tv_sec = 10;
+    timeout.tv_usec = 0;
+    FD_ZERO(&fd);
+    FD_SET(socket_fd, &fd);
+
+    /* now make sure we wait in the correct direction */
+    dir = libssh2_session_block_directions(session);
+    if(dir & LIBSSH2_SESSION_BLOCK_INBOUND)
+        readfd = &fd;
+    if(dir & LIBSSH2_SESSION_BLOCK_OUTBOUND)
+        writefd = &fd;
+    rc = select(socket_fd + 1, readfd, writefd, NULL, &timeout);
+    return rc;
 }
 
 int SinricTeleport::forwardTunnel(LIBSSH2_SESSION *session, LIBSSH2_CHANNEL *channel) {
@@ -200,6 +250,7 @@ int SinricTeleport::forwardTunnel(LIBSSH2_SESSION *session, LIBSSH2_CHANNEL *cha
   char buf[16384];
   int forward_socket = -1;
 
+  memset(buf, 0, sizeof(buf));
   memset(&sin, 0, sizeof(sin));
 
   Serial.printf("[Teleport]: Accepted remote connection. Connecting to %s:%d\n", localIP, localPort);
@@ -212,13 +263,13 @@ int SinricTeleport::forwardTunnel(LIBSSH2_SESSION *session, LIBSSH2_CHANNEL *cha
 
   sin.sin_family = AF_INET;
   sin.sin_port = htons(localPort);
-  sin.sin_addr.s_addr = inet_addr(localIP.c_str());
+  sin.sin_addr.s_addr = inet_addr(localIP);
 
   if (sin.sin_addr.s_addr == 0xffffffff) {
     struct hostent *hp;
-    hp = gethostbyname(localIP.c_str());
+    hp = gethostbyname(localIP);
     if (hp == NULL) {
-      Serial.printf("[Teleport]: gethostbyname fail %s", localIP.c_str());
+      Serial.printf("[Teleport]: gethostbyname fail %s", localIP);
       while (1) {
         vTaskDelay(1);
       }
@@ -239,7 +290,7 @@ int SinricTeleport::forwardTunnel(LIBSSH2_SESSION *session, LIBSSH2_CHANNEL *cha
     goto shutdown;
   }
 
-  DEBUG_TELEPORT("[Teleport]: Forwarding connection from remote %s:%d to local %s:%d\n", teleportServerListenHost, teleportServerDynaGotPort, localIP, localPort);
+  DEBUG_TELEPORT("[Teleport]: Forwarding connection to local %s:%d\n", localIP, localPort);
 
   /* Setting session to non-blocking IO */
   libssh2_session_set_blocking(session, 0);
@@ -250,6 +301,7 @@ int SinricTeleport::forwardTunnel(LIBSSH2_SESSION *session, LIBSSH2_CHANNEL *cha
     tv.tv_sec = 0;
     tv.tv_usec = 100000;
     rc = select(forward_socket + 1, &fds, NULL, NULL, &tv);
+    memset(buf, 0, sizeof(buf));
 
     if (-1 == rc) {
       Serial.printf("[Teleport]: Forward socket not ready!\n");
@@ -258,6 +310,7 @@ int SinricTeleport::forwardTunnel(LIBSSH2_SESSION *session, LIBSSH2_CHANNEL *cha
 
     if (rc && FD_ISSET(forward_socket, &fds)) {
       len = recv(forward_socket, buf, sizeof(buf), 0);
+
       if (len < 0) {
         Serial.printf("[Teleport]: Error reading from the forward socket!\n");
         goto shutdown;
@@ -265,30 +318,44 @@ int SinricTeleport::forwardTunnel(LIBSSH2_SESSION *session, LIBSSH2_CHANNEL *cha
         Serial.printf("[Teleport]: The local server at %s:%d disconnected!\n", localIP, localPort);
         goto shutdown;
       }
+
+      //Serial.printf("data: %.*s\n", len, buf);
+
       wr = 0;
-      do {
-        i = libssh2_channel_write(channel, buf, len);
-        if (i < 0) {
-          char *error;
-          libssh2_session_last_error(session, &error, NULL, 0);
-          DEBUG_TELEPORT("[Teleport] libssh2_channel_write error: %s\n", error);          
-          Serial.printf("[Teleport]: Error writing to the server channel: %d\n", i);
-          goto shutdown;
-        }
-        wr += i;
-      } while (i > 0 && wr < len);
+      while (wr < len) {
+          rc = libssh2_channel_write(channel, buf + wr, len - wr);
+          if (rc < 0) {
+              if (rc == LIBSSH2_ERROR_EAGAIN) {
+                  DEBUG_TELEPORT("[Teleport]: Error writing.. so wait for the socket to become writableand try again.\n");
+                  waitSocket(forward_socket, session);
+
+                  /*
+                  fd_set fd;
+                  FD_ZERO(&fd);
+                  FD_SET(forward_socket, &fd);
+                  select(forward_socket + 1, NULL, &fd, NULL, NULL);
+                  */
+              } else {
+                  Serial.printf("[Teleport]: error writing to server channel: %d\n", rc);
+                  goto shutdown;
+              }
+          } else {
+              wr += rc;
+          }
+      }
     }
 
     while (1) {
+      memset(buf, 0, sizeof(buf));
       len = libssh2_channel_read(channel, buf, sizeof(buf));
-      if (LIBSSH2_ERROR_EAGAIN == len)
+
+      if (LIBSSH2_ERROR_EAGAIN == len) {
         break;
+      }
       else if (len < 0) {
-        Serial.printf("[Teleport]: Error reading from the server channel: %d\n", (int)len);
+        Serial.printf("[Teleport]: Error reading from the teleport server channel: %d\n", (int)len);
         goto shutdown;
       }
-
-      DEBUG_TELEPORT("[Teleport]: %d bytes read from from the server channel.\n", i);
 
       wr = 0;
       while (wr < len) {
@@ -300,10 +367,8 @@ int SinricTeleport::forwardTunnel(LIBSSH2_SESSION *session, LIBSSH2_CHANNEL *cha
         wr += i;
       }
 
-      DEBUG_TELEPORT("[Teleport]: %d bytes written to forward_socket.\n", wr);
-      
       if (libssh2_channel_eof(channel)) {
-        Serial.printf("[Teleport]: The remote client at %s:%d disconnected!\n", teleportServerListenHost, teleportServerDynaGotPort);
+        DEBUG_TELEPORT("[Teleport]: The remote client at %s:%d disconnected!\n", teleportServerListenHost, teleportServerDynaGotPort);
         goto shutdown;
       }
     }
