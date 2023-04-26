@@ -9,8 +9,8 @@
 const char *ssid = "";
 const char *wifi_password = ""; 
 
-const std::string privkey = "";
-const std::string pubkey = "";
+const char * privkey = "";
+const char * pubkey = "";
 
 WebServer server(80);
 
@@ -40,7 +40,18 @@ void setup_wifi() {
   IPAddress localIP = WiFi.localIP();
   Serial.printf("connected!\r\n[WiFi]: IP-Address is %d.%d.%d.%d\r\n", localIP[0], localIP[1], localIP[2], localIP[3]);
 }
- 
+
+void setup_teleport() { 
+  teleport.onConnected([] () {
+    Serial.printf("[Teleport]: Connected!!!\r\n");
+  });
+
+  teleport.onDisconnected([] () {
+    Serial.printf("[Teleport]: Disconnected!!!\r\n");
+  });
+
+  teleport.begin();   
+} 
 
 void setup() {
   Serial.begin(BAUD_RATE);
@@ -50,7 +61,7 @@ void setup() {
   setup_webserver();
 
   // Start Teleport
-  teleport.begin();   
+  setup_teleport();
 }
 
 void loop(){
