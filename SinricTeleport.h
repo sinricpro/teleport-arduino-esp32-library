@@ -7,17 +7,17 @@
 
 #pragma once
 
+#define SINRIC_TELEPORT_VERSION "1.1.1"
+
 #ifdef ENABLE_SINRIC_TELEPORT_LOG
   #ifdef DEBUG_ESP_PORT
     #define DEBUG_TELEPORT(...) DEBUG_ESP_PORT.printf( __VA_ARGS__ )
   #else
     #define DEBUG_TELEPORT(...) if(Serial) Serial.printf( __VA_ARGS__ )
   #endif
-  #else
-    #define DEBUG_TELEPORT(x...) if (false) do { (void)0; } while (0)
+#else
+  #define DEBUG_TELEPORT(x...) if (false) do { (void)0; } while (0)
 #endif
-
-#define SINRIC_TELEPORT_VERSION "1.1.1"
 
 #include <libssh2.h>
 #include <sys/socket.h>
@@ -47,8 +47,8 @@ class SinricTeleport {
     const char * privateKey;
     const char * publicKey;
 
-    const char *teleportServerIP = "5.161.193.42";
-    int teleportServerPort = 8443;
+    const char *teleportServerIP = "5.161.193.42"; // TODO: change to DNS
+    const int teleportServerPort = 8443;
 
     const char *teleportServerListenHost = "localhost"; /* determined by server */
     int teleportServerDynaGotPort; /* determined by server */
@@ -100,42 +100,42 @@ void SinricTeleport::teleportTask(void * pvParameters) {
 
   if (rc != 0) {
     DEBUG_TELEPORT("[Teleport]: libssh2 initialization failed (%d)\n", rc);
-    return;
+    goto shutdown;
   }
 
   DEBUG_TELEPORT("[Teleport]: Connecting to Teleport server ..\n");
 
   sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (sock == -1) {
-    Serial.printf("[Teleport]: Error opening socket!\n");
-    return;
+    DEBUG_TELEPORT("[Teleport]: Error opening socket!\n");
+    goto shutdown;
   }
 
   sin.sin_family = AF_INET;
   if (INADDR_NONE == (sin.sin_addr.s_addr = inet_addr(l_pThis->teleportServerIP))) {
-    Serial.printf("[Teleport]: Invalid server IP address of Teleport server!\n");
-    return;
+    DEBUG_TELEPORT("[Teleport]: Invalid server IP address of Teleport server!\n");
+    goto shutdown;
   }
 
   sin.sin_port = htons(l_pThis->teleportServerPort); /* SSH port */
   if (connect(sock, (struct sockaddr*)(&sin),
               sizeof(struct sockaddr_in)) != 0) {
-    Serial.printf("Failed to connect to Teleport server!\n");
-    return;
+    DEBUG_TELEPORT("Failed to connect to Teleport server!\n");
+    goto shutdown;
   }
 
   /* Create a session instance of ssh2*/
   session = libssh2_session_init();
   if (!session) {
-    Serial.printf("[Teleport]: Could not initialize session!\n");
-    return;
+    DEBUG_TELEPORT("[Teleport]: Could not initialize session!\n");
+    goto shutdown;
   }
 
   /* ... start it up. This will trade welcome banners, exchange keys, and setup crypto, compression, and MAC layers */
   rc = libssh2_session_handshake(session, sock);
   if (rc) {
-    Serial.printf("[Teleport]: Error when starting up session: %d\n", rc);
-    return;
+    DEBUG_TELEPORT("[Teleport]: Error when starting up session: %d\n", rc);
+    goto shutdown;
   }
 
   /* Verify server finger print */
@@ -149,8 +149,8 @@ void SinricTeleport::teleportTask(void * pvParameters) {
   if (fingerprint && strcmp(pubkey_md5, fingerprint)) {
     DEBUG_TELEPORT("[Teleport]: Fingerprint matched!\n");
   } else {
-    Serial.printf("Teleport server fingerprint match failed!\n");
-    return;
+    DEBUG_TELEPORT("Teleport server fingerprint match failed!\n");
+    goto shutdown;
   }
 
   const char* passphrase = NULL;
@@ -165,8 +165,8 @@ void SinricTeleport::teleportTask(void * pvParameters) {
   rc = libssh2_userauth_publickey_frommemory(session, user, strlen(user), l_pThis->publicKey, strlen(l_pThis->publicKey), l_pThis->privateKey, strlen(l_pThis->privateKey), passphrase);
 
   if (rc != 0) {
-    Serial.printf("[Teleport]: Authenticate the session with a public key failed.!\n");
-    return;
+    DEBUG_TELEPORT("[Teleport]: Authenticate the session with a public key failed.!\n");
+    goto shutdown;
   }
 
   //libssh2_trace(session, LIBSSH2_TRACE_SOCKET);
@@ -175,7 +175,6 @@ void SinricTeleport::teleportTask(void * pvParameters) {
   listener = libssh2_channel_forward_listen_ex(session, l_pThis->teleportServerListenHost, 0, &l_pThis->teleportServerDynaGotPort, 1);
 
   if (!listener) {
-    Serial.printf("[Teleport]: Could not start the tcpip forward listener!\n");
     char *error;
     libssh2_session_last_error(session, &error, NULL, 0);
     DEBUG_TELEPORT("[Teleport]: libssh2_channel_forward_listen_ex error: %s\n", error);
@@ -191,7 +190,6 @@ void SinricTeleport::teleportTask(void * pvParameters) {
     channel = libssh2_channel_forward_accept(listener);
 
     if (!channel) {
-      Serial.printf("[Teleport]: Could not accept the remote connection!\n");
       char *error;
       libssh2_session_last_error(session, &error, NULL, 0);
       DEBUG_TELEPORT("[Teleport] libssh2_channel_forward_accept error: %s\n", error);
@@ -205,11 +203,11 @@ void SinricTeleport::teleportTask(void * pvParameters) {
 
 
 shutdown:
-  if (channel) libssh2_channel_free(channel);
+  if (channel)  libssh2_channel_free(channel);
   if (listener) libssh2_channel_forward_cancel(listener);
-  libssh2_session_disconnect(session, "Client disconnecting normally");
-  libssh2_session_free(session);
-  close(sock);
+  if (session)  libssh2_session_disconnect(session, "Client disconnecting normally");
+  if (session)  libssh2_session_free(session);
+  if (sock)     close(sock);
   libssh2_exit();
 
   if(l_pThis->disconnectedCallback != nullptr) {
