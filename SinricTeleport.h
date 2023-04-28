@@ -53,8 +53,6 @@ class SinricTeleport {
     const char *teleportServerIP = "connect.burrow.sinric.tel";
     const int   teleportServerPort = 8443;
     const char *teleportServerHostKey = "1B 89 54 DC F6 52 C9 80 57 91 EB 9C DB A2 F5 4F 6F 6D 14 D9";
-    
-
     const char *teleportServerListenHost = "localhost"; /* determined by server */
     int teleportServerDynaGotPort; /* determined by server */
 
@@ -116,7 +114,9 @@ void SinricTeleport::teleportTask(void * pvParameters) {
 
   sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (sock == -1) {
-    const char * reason = "Error opening socket!";
+    char buffer[50];
+    sprintf(buffer, "%s: (%d)", "Error opening socket!\n" , sock);    
+    const char * reason = const_cast<const char *>(buffer);
     l_pThis->end(sock, session, listener, channel, reason);
     return;
   }
@@ -126,7 +126,7 @@ void SinricTeleport::teleportTask(void * pvParameters) {
   struct hostent *hp;
   hp = gethostbyname(l_pThis->teleportServerIP);
   if (hp == NULL) {
-    const char * reason = "Get hostbyname failed!";
+    const char * reason = "Get hostbyname failed. Check the DNS!\n";
     l_pThis->end(sock, session, listener, channel, reason);
     return;    
   }
@@ -154,7 +154,9 @@ void SinricTeleport::teleportTask(void * pvParameters) {
   /* ... start it up. This will trade welcome banners, exchange keys, and setup crypto, compression, and MAC layers */
   rc = libssh2_session_handshake(session, sock);
   if (rc) {
-    const char * reason = "Error starting up the session!\n";
+    char buffer[100];
+    sprintf(buffer, "%s: (%d)", "Error starting up the session!\n" , rc);    
+    const char * reason = const_cast<const char *>(buffer);
     l_pThis->end(sock, session, listener, channel, reason);
     return;
   }
@@ -186,7 +188,9 @@ void SinricTeleport::teleportTask(void * pvParameters) {
   rc = libssh2_userauth_publickey_frommemory(session, user, strlen(user), l_pThis->_publicKey, strlen(l_pThis->_publicKey), l_pThis->_privateKey, strlen(l_pThis->_privateKey), passphrase);
 
   if (rc != 0) {
-    const char * reason = "Authenticate the session with a public key failed.!\n";
+    char buffer[100];
+    sprintf(buffer, "%s: (%d)", "Authenticate the session with a public key failed.!\n" , rc);    
+    const char * reason = const_cast<const char *>(buffer);
     l_pThis->end(sock, session, listener, channel, reason);
     return;
   }
