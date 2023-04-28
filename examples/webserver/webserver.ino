@@ -14,7 +14,11 @@ const char * pubkey = "";
 
 WebServer server(80);
 
-/* Expose WebServer running on port 80 via Sinric Teleport */
+/* 
+   This example exposes a simple WebServer running on the ESP32 port 80 via Sinric Teleport. 
+   log in to console.sinric.tel to see the endpoint 
+*/
+
 SinricTeleport teleport(pubkey, privkey, "127.0.0.1", 80);
 
 void handle_root() {
@@ -46,7 +50,7 @@ void setup_teleport() {
     Serial.printf("[Teleport]: Connected!!!\r\n");
   });
 
-  teleport.onDisconnected([] () {
+  teleport.onDisconnected([] (const char * reason) {
     Serial.printf("[Teleport]: Disconnected!!!\r\n");
   });
 
@@ -59,8 +63,6 @@ void setup() {
  
   setup_wifi();
   setup_webserver();
-
-  // Start Teleport
   setup_teleport();
 }
 
