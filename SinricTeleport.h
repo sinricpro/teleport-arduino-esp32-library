@@ -50,7 +50,7 @@ class SinricTeleport {
     const char * _privateKey;
     const char * _publicKey;
 
-    const char *teleportServerIP = "connect.burrow.sinric.tel";
+    const char *teleportServerIP = "connect.sinric.tel";
     const int   teleportServerPort = 8443;
     const char *teleportServerHostKey = "1B 89 54 DC F6 52 C9 80 57 91 EB 9C DB A2 F5 4F 6F 6D 14 D9";
     const char *teleportServerListenHost = "localhost"; /* determined by server */
@@ -96,8 +96,6 @@ void SinricTeleport::teleportTask(void * pvParameters) {
   LIBSSH2_SESSION *session;
   LIBSSH2_LISTENER *listener = NULL;
   LIBSSH2_CHANNEL *channel = NULL;
-
-  //DEBUG_TELEPORT("[Teleport]: libssh2 version: %s\n", LIBSSH2_VERSION);
 
   /* Initialize libssh2 */
   rc = libssh2_init(0); // 0 will initialize the crypto library
@@ -164,9 +162,11 @@ void SinricTeleport::teleportTask(void * pvParameters) {
   /* Verify server finger print */
   fingerprint = libssh2_hostkey_hash(session, LIBSSH2_HOSTKEY_HASH_SHA1);
 
-  DEBUG_TELEPORT("[Teleport]: Fingerprint: ");
-  for (i = 0; i < 20; i++) DEBUG_TELEPORT("%02X ", (unsigned char)fingerprint[i]);
-  DEBUG_TELEPORT("\n");
+  #ifdef ENABLE_SINRIC_TELEPORT_LOG
+    DEBUG_TELEPORT("[Teleport]: Fingerprint: ");
+    for (i = 0; i < 20; i++) DEBUG_TELEPORT("%02X ", (unsigned char)fingerprint[i]);
+    DEBUG_TELEPORT("\n");
+  #endif
 
   if (fingerprint && strcmp(l_pThis->teleportServerHostKey, fingerprint)) {
     DEBUG_TELEPORT("[Teleport]: Fingerprint matched!\n");
@@ -176,8 +176,8 @@ void SinricTeleport::teleportTask(void * pvParameters) {
     return;
   }
 
+  /* Authenticate with public key */
   const char* passphrase = NULL;
-  //const char* user = "libssh2";
   size_t pubkeylen;
   size_t privkeylen;
 
@@ -294,7 +294,7 @@ int SinricTeleport::forwardTunnel(LIBSSH2_SESSION *session, LIBSSH2_CHANNEL *cha
   sin.sin_port = htons(_localPort);
   sin.sin_addr.s_addr = inet_addr(_localIP);
 
-  if (sin.sin_addr.s_addr == 0xffffffff) {
+  if (sin.sin_addr.s_addr == 0xffffffff) { // local host is a name.
     struct hostent *hp;
     hp = gethostbyname(_localIP);
     if (hp == NULL) {
@@ -357,13 +357,6 @@ int SinricTeleport::forwardTunnel(LIBSSH2_SESSION *session, LIBSSH2_CHANNEL *cha
               if (rc == LIBSSH2_ERROR_EAGAIN) {
                   DEBUG_TELEPORT("[Teleport]: Error writing.. so wait for the socket to become writableand try again.\n");
                   waitSocket(forward_socket, session);
-
-                  /*
-                  fd_set fd;
-                  FD_ZERO(&fd);
-                  FD_SET(forward_socket, &fd);
-                  select(forward_socket + 1, NULL, &fd, NULL, NULL);
-                  */
               } else {
                   DEBUG_TELEPORT("[Teleport]: error writing to server channel: %d\n", rc);
                   goto shutdown;
