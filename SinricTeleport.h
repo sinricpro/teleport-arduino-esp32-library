@@ -30,21 +30,40 @@
 #include <errno.h>
 #include <stdio.h>
 #include <ctype.h>
-#include "netdb.h" // gethostbyname
+#include "netdb.h" // for gethostbyname
 #include <string>
 
-typedef void (*disconnectedCallback)(const char *);
-typedef void (*connectedCallback)(void);
+/**
+ * @brief Callback definition for onConnected function
+ *
+ * Gets called when device is connected to Sinric Teleport server
+ * @param void
+ * @return void
+ */
+using ConnectedCallbackHandler = std::function<void(void)>;
 
+/**
+ * @brief Callback definition for onDisconnected function
+ *
+ * Gets called when device is disconnected from Sinric Teleport server
+ * @param char disconnect reason
+ * @return void
+ */
+using DisconnectedCallbackHandler = std::function<void(const char *)>;
+
+/**
+ * @class SinricTeleport
+ * @ingroup SinricTeleport
+ * @brief The main class of this library, handles secure connection between Server and your module.
+ **/
 class SinricTeleport {
   public:
     SinricTeleport(const char *publicKey, const char *privateKey,
                    const char *localIP, int localPort) : _publicKey(publicKey), _privateKey(privateKey), _localIP(localIP), _localPort(localPort) {}
 
     void begin();
-
-    void onConnected(connectedCallback callback);
-    void onDisconnected(disconnectedCallback callback);
+    void onConnected(ConnectedCallbackHandler callback);
+    void onDisconnected(DisconnectedCallbackHandler callback);
 
   private:
     const char * _privateKey;
@@ -71,19 +90,33 @@ class SinricTeleport {
     int forwardTunnel(LIBSSH2_SESSION *session, LIBSSH2_CHANNEL *channel);
     void end(int sock, LIBSSH2_SESSION *session, LIBSSH2_LISTENER *listener, LIBSSH2_CHANNEL *channel, const char * reason);
     
-    disconnectedCallback _disconnectedCallback;    
-    connectedCallback _connectedCallback;    
-
+    DisconnectedCallbackHandler _disconnectedCallback;    
+    ConnectedCallbackHandler _connectedCallback;
 };
 
-void SinricTeleport::onConnected(connectedCallback callback) {
+/**
+ * @brief Called when connected to the server
+ *
+ * @param cb Function pointer to a `ConnectedCallbackHandler` function
+ * @return void
+ **/
+void SinricTeleport::onConnected(ConnectedCallbackHandler callback) {
     _connectedCallback = callback;
 }
 
-void SinricTeleport::onDisconnected(disconnectedCallback callback) {
+/**
+ * @brief Called when disconnected from the server
+ *
+ * @param cb Function pointer to a `DisconnectedCallbackHandler` function
+ * @return void
+ **/
+void SinricTeleport::onDisconnected(DisconnectedCallbackHandler callback) {
     _disconnectedCallback = callback;
 }
 
+/**
+ * @brief Initialize libssh2, connect to server and start reverse port forwarding.
+ **/
 void SinricTeleport::teleportTask(void * pvParameters) {
   SinricTeleport *l_pThis = (SinricTeleport *) pvParameters;
 
@@ -234,6 +267,9 @@ void SinricTeleport::teleportTask(void * pvParameters) {
   }
 }
 
+/**
+ * @brief Free resources and invoke disconnected handler.
+ **/
 void SinricTeleport::end(int sock, LIBSSH2_SESSION *session, LIBSSH2_LISTENER *listener, LIBSSH2_CHANNEL *channel, const char * reason) {
   if (channel)  libssh2_channel_free(channel);
   if (listener) libssh2_channel_forward_cancel(listener);
@@ -248,6 +284,9 @@ void SinricTeleport::end(int sock, LIBSSH2_SESSION *session, LIBSSH2_LISTENER *l
   }  
 }
 
+/**
+ * @brief Wait until socket is read/write able
+ **/
 int SinricTeleport::waitSocket(int socket_fd, LIBSSH2_SESSION *session) {
     struct timeval timeout;
     int rc;
@@ -270,6 +309,9 @@ int SinricTeleport::waitSocket(int socket_fd, LIBSSH2_SESSION *session) {
     return rc;
 }
 
+/**
+ * @brief Start reading/writing to remote connection.
+ **/
 int SinricTeleport::forwardTunnel(LIBSSH2_SESSION *session, LIBSSH2_CHANNEL *channel) {
   int i, rc = 0;
   struct sockaddr_in sin;
@@ -417,6 +459,9 @@ bool SinricTeleport::isEndingWith(const std::string& str, const std::string& end
   return str.compare(str.size() - ending.size(), ending.size(), ending) == 0;
 }
 
+/**
+ * @brief Validate public key
+ **/
 bool SinricTeleport::isValidPublicKey() {
   std::string prefix = "ssh-rsa";
   
@@ -428,6 +473,9 @@ bool SinricTeleport::isValidPublicKey() {
   return true;
 }
 
+/**
+ * @brief Validate private key
+ **/
 bool SinricTeleport::isValidPrivateKey() {
   std::string prefix = "-----BEGIN PRIVATE KEY-----";
   
@@ -445,6 +493,9 @@ bool SinricTeleport::isValidPrivateKey() {
   return true;
 }
 
+/**
+ * @brief Initialize libssh2 and to connect to the server
+ **/
 void SinricTeleport::begin() {
   if(!isValidPublicKey()) return;
   if(!isValidPrivateKey()) return;
