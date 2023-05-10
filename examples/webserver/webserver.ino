@@ -1,5 +1,3 @@
-#define ENABLE_SINRIC_TELEPORT_LOG
-
 #include <WiFi.h>
 #include <WebServer.h>
 #include "SinricTeleport.h"
@@ -9,16 +7,12 @@
 const char *ssid = "";
 const char *wifi_password = ""; 
 
-const char * privkey = "";
 const char * pubkey = "";
+const char * privkey = "";
 
 WebServer server(80);
 
-/* 
-   This example exposes a simple WebServer running on the ESP32 port 80 via Sinric Teleport. 
-   log in to console.sinric.tel to see the endpoint 
-*/
-
+/* Expose WebServer running on port 80 via Sinric Teleport */
 SinricTeleport teleport(pubkey, privkey, "127.0.0.1", 80);
 
 void handle_root() {
@@ -46,12 +40,17 @@ void setup_wifi() {
 }
 
 void setup_teleport() { 
-  teleport.onConnected([] () {
-    Serial.printf("[Teleport]: Connected!!!\r\n");
+  teleport.onConnected([] (const char * sessionUrl) {
+    Serial.printf("[Teleport]: Connected to Teleport!!!\r\n");
+    Serial.printf("========================================================\r\n");
+    Serial.printf("HTTP : https://%s\r\n", sessionUrl);
+    Serial.printf("TCP  : %s:443\r\n", sessionUrl);
+    Serial.printf("========================================================\r\n");
   });
 
   teleport.onDisconnected([] (const char * reason) {
     Serial.printf("[Teleport]: Disconnected!!!\r\n");
+    Serial.printf("%s\r\n", reason);
   });
 
   teleport.begin();   
