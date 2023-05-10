@@ -4,8 +4,8 @@
 
 #define BAUD_RATE 115200
 
-const char *ssid = "June-2G";
-const char *wifi_password = "wifipassword";
+const char *ssid = "";
+const char *wifi_password = "";
 
 OV2640 cam;
 WebServer server(80);
