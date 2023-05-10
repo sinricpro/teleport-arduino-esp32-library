@@ -19,6 +19,11 @@
   #define DEBUG_TELEPORT(x...) if (false) do { (void)0; } while (0)
 #endif
 
+#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32) 
+#else
+#error "Architecture not supported!"
+#endif
+
 #include <libssh2.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -37,10 +42,10 @@
  * @brief Callback definition for onConnected function
  *
  * Gets called when device is connected to Sinric Teleport server
- * @param void
+ * @param session url
  * @return void
  */
-using ConnectedCallbackHandler = std::function<void(void)>;
+using ConnectedCallbackHandler = std::function<void(const char *)>;
 
 /**
  * @brief Callback definition for onDisconnected function
@@ -61,6 +66,8 @@ class SinricTeleport {
     SinricTeleport(const char *publicKey, const char *privateKey,
                    const char *localIP, int localPort) : _publicKey(publicKey), _privateKey(privateKey), _localIP(localIP), _localPort(localPort) {}
 
+    SinricTeleport(const char *localIP, int localPort) : _localIP(localIP), _localPort(localPort) {}
+
     void begin();
     void onConnected(ConnectedCallbackHandler callback);
     void onDisconnected(DisconnectedCallbackHandler callback);
@@ -73,7 +80,7 @@ class SinricTeleport {
     const int   teleportServerPort = 8443;
     const char *teleportServerHostKey = "1B 89 54 DC F6 52 C9 80 57 91 EB 9C DB A2 F5 4F 6F 6D 14 D9";
     const char *teleportServerListenHost = "localhost"; /* determined by server */
-    int teleportServerDynaGotPort; /* determined by server */
+    int _teleportServerDynaGotPort; /* determined by server */
 
     const char * _localIP = "127.0.0.1";
     int _localPort = 80;
@@ -89,7 +96,8 @@ class SinricTeleport {
     int waitSocket(int socket_fd, LIBSSH2_SESSION *session);    
     int forwardTunnel(LIBSSH2_SESSION *session, LIBSSH2_CHANNEL *channel);
     void end(int sock, LIBSSH2_SESSION *session, LIBSSH2_LISTENER *listener, LIBSSH2_CHANNEL *channel, const char * reason);
-    
+    const char * getSessionUrl(LIBSSH2_SESSION *session);
+
     DisconnectedCallbackHandler _disconnectedCallback;    
     ConnectedCallbackHandler _connectedCallback;
 };
@@ -112,6 +120,57 @@ void SinricTeleport::onConnected(ConnectedCallbackHandler callback) {
  **/
 void SinricTeleport::onDisconnected(DisconnectedCallbackHandler callback) {
     _disconnectedCallback = callback;
+}
+
+const char * SinricTeleport::getSessionUrl(LIBSSH2_SESSION *session) { 
+  DEBUG_TELEPORT("[Teleport]: Get session url..\n");
+
+  LIBSSH2_CHANNEL *channel;
+  int rc;
+  const char *sessionUrl = nullptr;
+  const char *sessionUrlCmd = nullptr;
+
+  channel = libssh2_channel_open_session(session);
+  if (!channel) {
+    DEBUG_TELEPORT("[Teleport]: Open shell session failed.\n");
+    goto shutdown;
+  }
+
+  rc = libssh2_channel_shell(channel);
+  if (rc != 0) {
+    char *error;
+    libssh2_session_last_error(session, &error, NULL, 0);
+    DEBUG_TELEPORT("[Teleport]: Open shell channel failed. rc: %d, error: %s\n", rc, error);
+    goto shutdown;
+  }
+
+  
+  sessionUrlCmd = "get-session-url\n";
+  rc = libssh2_channel_write(channel, sessionUrlCmd, strlen(sessionUrlCmd));
+  if (rc < 0) {
+    char *error;
+    libssh2_session_last_error(session, &error, NULL, 0);
+    DEBUG_TELEPORT("[Teleport]: Write to shell channel failed. rc: %d, error: %s\n", rc, error);
+    goto shutdown;
+  }
+
+  static char sessionUrlCmdRes[256];
+  rc = libssh2_channel_read(channel, sessionUrlCmdRes, sizeof(sessionUrlCmdRes));  
+  if (rc < 0) {
+    char *error;
+    libssh2_session_last_error(session, &error, NULL, 0);    
+    DEBUG_TELEPORT("[Teleport]: Read from shell channel failed. rc: %d, error: %s\n", rc, error);
+    goto shutdown;
+  }
+
+  DEBUG_TELEPORT("[Teleport]: Session URL: %.*s\n", rc, sessionUrlCmdRes);
+  sessionUrl = const_cast<const char *>(sessionUrlCmdRes);
+
+shutdown:  
+  if (channel) libssh2_channel_close(channel);
+  if (channel) libssh2_channel_free(channel);
+
+  return sessionUrl;
 }
 
 /**
@@ -146,7 +205,7 @@ void SinricTeleport::teleportTask(void * pvParameters) {
   sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (sock == -1) {
     char buffer[50];
-    sprintf(buffer, "%s: (%d)", "Error opening socket!\n" , sock);    
+    sprintf(buffer, "%s: (%d)\n", "Error opening socket!" , sock);    
     const char * reason = const_cast<const char *>(buffer);
     l_pThis->end(sock, session, listener, channel, reason);
     return;
@@ -182,11 +241,12 @@ void SinricTeleport::teleportTask(void * pvParameters) {
     return;
   }
 
-  /* ... start it up. This will trade welcome banners, exchange keys, and setup crypto, compression, and MAC layers */
+  /* ... start it up. This will trade welcome banners, exchange keys, 
+  and setup crypto, compression, and MAC layers */
   rc = libssh2_session_handshake(session, sock);
   if (rc) {
     char buffer[100];
-    sprintf(buffer, "%s: (%d)", "Error starting up the session!\n" , rc);    
+    sprintf(buffer, "%s: (%d)\n", "Error starting up the session!" , rc);    
     const char * reason = const_cast<const char *>(buffer);
     l_pThis->end(sock, session, listener, channel, reason);
     return;
@@ -209,7 +269,7 @@ void SinricTeleport::teleportTask(void * pvParameters) {
     return;
   }
 
-  /* Authenticate with public key */
+  /* Authentication */
   const char* passphrase = NULL;
   size_t pubkeylen;
   size_t privkeylen;
@@ -218,11 +278,17 @@ void SinricTeleport::teleportTask(void * pvParameters) {
   sprintf(buffer, "%s:%d", l_pThis->_localIP, l_pThis->_localPort);
   const char *user = const_cast<const char *>(buffer);
 
-  rc = libssh2_userauth_publickey_frommemory(session, user, strlen(user), l_pThis->_publicKey, strlen(l_pThis->_publicKey), l_pThis->_privateKey, strlen(l_pThis->_privateKey), passphrase);
-
+  if(l_pThis->_publicKey == nullptr && l_pThis->_privateKey == nullptr) {
+    DEBUG_TELEPORT("[Teleport]: Authenticate as an anonymous user!\n");
+    rc = libssh2_userauth_password_ex(session, user, strlen(user), "", 0, NULL);
+  } else {
+    DEBUG_TELEPORT("[Teleport]: Authenticate with public key!\n");
+    rc = libssh2_userauth_publickey_frommemory(session, user, strlen(user), l_pThis->_publicKey, strlen(l_pThis->_publicKey), l_pThis->_privateKey, strlen(l_pThis->_privateKey), passphrase);
+  }
+  
   if (rc != 0) {
     char buffer[100];
-    sprintf(buffer, "%s: (%d)", "Authenticate the session with a public key failed.!\n" , rc);    
+    sprintf(buffer, "%s: (%d)\n", "Authentication failed!" , rc);    
     const char * reason = const_cast<const char *>(buffer);
     l_pThis->end(sock, session, listener, channel, reason);
     return;
@@ -230,8 +296,8 @@ void SinricTeleport::teleportTask(void * pvParameters) {
 
   //libssh2_trace(session, LIBSSH2_TRACE_SOCKET);
 
-  DEBUG_TELEPORT("[Teleport]: Asking server to listen!\n");
-  listener = libssh2_channel_forward_listen_ex(session, l_pThis->teleportServerListenHost, 0, &l_pThis->teleportServerDynaGotPort, 1);
+  DEBUG_TELEPORT("[Teleport]: Asking the server to listen!\n");
+  listener = libssh2_channel_forward_listen_ex(session, l_pThis->teleportServerListenHost, 0, &l_pThis->_teleportServerDynaGotPort, 1);
 
   if (!listener) {
     char *error;
@@ -244,7 +310,15 @@ void SinricTeleport::teleportTask(void * pvParameters) {
   }
 
   if(l_pThis->_connectedCallback != nullptr) {
-    l_pThis->_connectedCallback();
+    const char * sessionUrl = l_pThis->getSessionUrl(session);
+
+    if(sessionUrl == nullptr) {
+      const char * reason = "Failed to get the session url.!\n";
+      l_pThis->end(sock, session, listener, channel, reason);
+      return;
+    }
+
+    l_pThis->_connectedCallback(sessionUrl);
   }
 
   while (1) {
@@ -282,6 +356,8 @@ void SinricTeleport::end(int sock, LIBSSH2_SESSION *session, LIBSSH2_LISTENER *l
   if(_disconnectedCallback != nullptr) {
     _disconnectedCallback(reason);
   }  
+
+  vTaskDelete( NULL );  
 }
 
 /**
@@ -432,7 +508,7 @@ int SinricTeleport::forwardTunnel(LIBSSH2_SESSION *session, LIBSSH2_CHANNEL *cha
       }
 
       if (libssh2_channel_eof(channel)) {
-        DEBUG_TELEPORT("[Teleport]: The remote client at %s:%d disconnected!\n", teleportServerListenHost, teleportServerDynaGotPort);
+        DEBUG_TELEPORT("[Teleport]: The remote client at %s:%d disconnected!\n", teleportServerListenHost, _teleportServerDynaGotPort);
         goto shutdown;
       }
     }
@@ -470,6 +546,14 @@ bool SinricTeleport::isValidPublicKey() {
     return false;
   }
 
+  bool startsWithSpace = isspace(_publicKey[0]);
+  bool endsWithSpace = isspace(_publicKey[strlen(_publicKey)-1]);
+
+   if(startsWithSpace || endsWithSpace) { 
+    Serial.printf("[Teleport]: Invalid Public Key. Cannot start or end with space... Cannot continue!\n");
+    return false;
+  }
+
   return true;
 }
 
@@ -480,13 +564,31 @@ bool SinricTeleport::isValidPrivateKey() {
   std::string prefix = "-----BEGIN PRIVATE KEY-----";
   
   if(!isStartingWith(_privateKey, prefix)) { 
-    Serial.printf("[Teleport]: Invalid Private Key. (invalid begin) Cannot continue!\n");
+    Serial.printf("[Teleport]: Invalid Private Key (invalid begin). Cannot continue!\n");
     return false;
   }
 
   std::string ending = "-----END PRIVATE KEY-----";
   if(!isEndingWith(_privateKey, ending)) {
-    Serial.printf("[Teleport]: Invalid Private Key!. (invalid end) Cannot continue!\n");
+    Serial.printf("[Teleport]: Invalid Private Key (invalid end). Cannot continue!\n");
+    return false;
+  }
+ 
+  bool hasNewlineAtBeginPrivateKey = _privateKey[27] == '\n';
+  if(!hasNewlineAtBeginPrivateKey) { 
+    Serial.printf("[Teleport]: Incorrect Private Key (no new line break at begin of key). Correct format: \n");
+    Serial.printf("-----BEGIN PRIVATE KEY-----\n");
+    Serial.printf("xxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
+    Serial.printf("-----END PRIVATE KEY-----\n");
+    return false;
+  }
+
+  bool hasNewlineAtEndPrivateKey = _privateKey[strlen(_privateKey)-26] == '\n';
+  if(!hasNewlineAtEndPrivateKey) { 
+    Serial.printf("[Teleport]: Incorrect Private Key (no new line break at end of key). Correct format: \n");
+    Serial.printf("-----BEGIN PRIVATE KEY-----\n");
+    Serial.printf("xxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
+    Serial.printf("-----END PRIVATE KEY-----\n");
     return false;
   }
 
