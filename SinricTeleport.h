@@ -64,9 +64,9 @@ using DisconnectedCallbackHandler = std::function<void(const char *)>;
 class SinricTeleport {
   public:
     SinricTeleport(const char *publicKey, const char *privateKey,
-                   const char *localIP, int localPort) : _publicKey(publicKey), _privateKey(privateKey), _localIP(localIP), _localPort(localPort) {}
+                   const char *localIP, int localPort) : _publicKey(publicKey), _privateKey(privateKey), _localIP(localIP), _localPort(localPort), _usingKeys(true) {}
 
-    SinricTeleport(const char *localIP, int localPort) : _localIP(localIP), _localPort(localPort) {}
+    SinricTeleport(const char *localIP, int localPort) : _localIP(localIP), _localPort(localPort), _usingKeys(false) {}
 
     void begin();
     void onConnected(ConnectedCallbackHandler callback);
@@ -84,6 +84,7 @@ class SinricTeleport {
 
     const char * _localIP = "127.0.0.1";
     int _localPort = 80;
+    bool _usingKeys = true;
 
     static void teleportTask(void * parameter);
 
@@ -122,6 +123,9 @@ void SinricTeleport::onDisconnected(DisconnectedCallbackHandler callback) {
     _disconnectedCallback = callback;
 }
 
+/**
+ * @brief Open a session and get the session url.
+ **/
 const char * SinricTeleport::getSessionUrl(LIBSSH2_SESSION *session) { 
   DEBUG_TELEPORT("[Teleport]: Get session url..\n");
 
@@ -599,9 +603,12 @@ bool SinricTeleport::isValidPrivateKey() {
  * @brief Initialize libssh2 and to connect to the server
  **/
 void SinricTeleport::begin() {
-  if(!isValidPublicKey()) return;
-  if(!isValidPrivateKey()) return;
-    
+
+  if(_usingKeys) {
+    if(!isValidPublicKey()) return;
+    if(!isValidPrivateKey()) return;
+  }
+      
   if (WiFi.status() != WL_CONNECTED) {
     Serial.printf("[Teleport]: WiFi is disconnected! Cannot continue!\n");
     return;
