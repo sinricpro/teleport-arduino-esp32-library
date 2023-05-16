@@ -73,8 +73,8 @@ class SinricTeleport {
     void onDisconnected(DisconnectedCallbackHandler callback);
 
   private:
-    const char * _privateKey = nullptr;
     const char * _publicKey = nullptr;
+    const char * _privateKey = nullptr;    
 
     const char *teleportServerIP = "connect.sinric.tel";
     const int   teleportServerPort = 8443;
