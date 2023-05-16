@@ -4,18 +4,29 @@
 
 #define BAUD_RATE 115200
 
-const char *ssid = "";
-const char *wifi_password = ""; 
+const char *ssid = ""; /* Change this */
+const char *wifi_password = "";  /* Change this */
 
-const char * pubkey = "";
-const char * privkey = "";
+const char * pubkey = ""; /* Change this */
+const char * privkey = ""; /* Change this */
 
 WebServer server(80);
+
+const char* www_username = "admin"; // Prompt user name
+const char* www_password = "teleport"; // Prompt password
+
+const char* www_realm = "Custom Auth Realm"; // allows you to set the realm of authentication Default:"Login Required"
+String authFailResponse = "Authentication Failed"; // the Content of the HTML response in case of Unautherized Access Default:empty
 
 /* Expose WebServer running on port 80 via Sinric Teleport */
 SinricTeleport teleport(pubkey, privkey, "127.0.0.1", 80);
 
 void handle_root() {
+  /* Authenticate */
+  if (!server.authenticate(www_username, www_password)) {
+    return server.requestAuthentication(DIGEST_AUTH, www_realm, authFailResponse);
+  } 
+ 
   String HTML = "<!DOCTYPE html><html><body><h1>Hello !</h1></body></html>";
   server.send(200, "text/html", HTML);
 }

@@ -85,7 +85,8 @@ void setup_teleport() {
     Serial.printf("%s\r\n", reason);
   });
 
-  teleport.begin();   
+  Serial.printf("[Teleport]: Connecting to Teleport..\r\n");
+  teleport.begin();
 } 
 
 void setup(void) {
