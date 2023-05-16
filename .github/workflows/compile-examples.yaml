@@ -51,3 +51,5 @@ jobs:
           sketch-paths: |
             ${{ env.UNIVERSAL_SKETCH_PATHS }}
             ${{ matrix.sketch-paths }}
+          cli-compile-flags: |
+            - --warnings="none"
