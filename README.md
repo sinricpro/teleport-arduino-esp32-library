@@ -13,7 +13,7 @@ This library helps you to to securely access your ESP32 over the internet from a
 5. Flash. 
 6. Endopint is displayed in the Arduino Serial Monitor and https://sinric.tel dashboard.
 
-## Minimal example
+## Minimal example (Registration not required)
 ```c
 #include <WiFi.h>
 #include <WebServer.h>
