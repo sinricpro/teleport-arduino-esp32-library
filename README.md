@@ -84,3 +84,7 @@ void loop(){
 }
 
 ```
+
+Result:
+
+![Sinric Teleport Session](https://github.com/sinricpro/teleport-arduino-esp32-library/blob/main/examples/webserver/img/teleport-endpoint.png?raw=true)
