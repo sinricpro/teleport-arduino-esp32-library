@@ -53,3 +53,4 @@ jobs:
             ${{ matrix.sketch-paths }}
           cli-compile-flags: |
             - --warnings="none"
+            - "compiler.cpp.extra_flags=-Werror"
