@@ -44,7 +44,6 @@ void setup_teleport() {
     Serial.printf("[Teleport]: Connected to Teleport!!!\r\n");
     Serial.printf("========================================================\r\n");
     Serial.printf("HTTP : https://%s\r\n", sessionUrl);
-    Serial.printf("TCP  : %s:443\r\n", sessionUrl);
     Serial.printf("========================================================\r\n");
   });
 
