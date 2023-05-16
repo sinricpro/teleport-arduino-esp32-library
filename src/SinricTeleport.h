@@ -73,8 +73,8 @@ class SinricTeleport {
     void onDisconnected(DisconnectedCallbackHandler callback);
 
   private:
-    const char * _privateKey;
-    const char * _publicKey;
+    const char * _privateKey = nullptr;
+    const char * _publicKey = nullptr;
 
     const char *teleportServerIP = "connect.sinric.tel";
     const int   teleportServerPort = 8443;
@@ -183,13 +183,12 @@ shutdown:
 void SinricTeleport::teleportTask(void * pvParameters) {
   SinricTeleport *l_pThis = (SinricTeleport *) pvParameters;
 
-  int rc, i;
+  int rc;
   struct sockaddr_in sin;
   const char *fingerprint;
-  char *userauthlist;
   int sock = -1;
 
-  LIBSSH2_SESSION *session;
+  LIBSSH2_SESSION *session = NULL;
   LIBSSH2_LISTENER *listener = NULL;
   LIBSSH2_CHANNEL *channel = NULL;
 
@@ -275,9 +274,7 @@ void SinricTeleport::teleportTask(void * pvParameters) {
 
   /* Authentication */
   const char* passphrase = NULL;
-  size_t pubkeylen;
-  size_t privkeylen;
-
+  
   char buffer[32];
   sprintf(buffer, "%s:%d", l_pThis->_localIP, l_pThis->_localPort);
   const char *user = const_cast<const char *>(buffer);
