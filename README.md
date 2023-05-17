@@ -1,8 +1,8 @@
-# Teleport Arduino ESP32 Library
-
-This library supports only ESP32.
+# Sinric Teleport Library
 
 Sinric Teleport helps you to to securely access your ESP32 over the internet from anywhere in the world. For more information, visit https://sinric.tel.
+
+**This library supports only ESP32.**
 
 ## How to use this library
 
