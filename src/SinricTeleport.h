@@ -259,6 +259,7 @@ void SinricTeleport::teleportTask(void * pvParameters) {
   fingerprint = libssh2_hostkey_hash(session, LIBSSH2_HOSTKEY_HASH_SHA1);
 
   #ifdef ENABLE_SINRIC_TELEPORT_LOG
+    int i;
     DEBUG_TELEPORT("[Teleport]: Fingerprint: ");
     for (i = 0; i < 20; i++) DEBUG_TELEPORT("%02X ", (unsigned char)fingerprint[i]);
     DEBUG_TELEPORT("\n");
