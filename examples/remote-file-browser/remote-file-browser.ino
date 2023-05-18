@@ -242,11 +242,9 @@ void setup_teleport() {
 } 
 
 void setup_wifi() { 
-  Serial.printf("Connecting to %s\n", ssid);
-  if (String(WiFi.SSID()) != String(ssid)) {
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, password);
-  }
+  Serial.printf("Connecting to %s\n", ssid);  
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);

@@ -1,0 +1,27 @@
+{
+    "name": "SinricTeleport",
+    "version": "1.1.1",
+    "description": "The simple way to access your ESP32 over internet from anywhere in the world",
+    "keywords": "WiFi, Terminal, ESP32 over internet, ESP32 anywhere",
+    "repository":
+    {
+      "type": "git",
+      "url": "https://github.com/sinricpro/teleport-arduino-esp32-library.git"
+    },
+    "authors":
+    [
+      {
+        "name": "Aruna Tennakoon",
+        "url": "https://github.com/kakopappa"
+      }
+    ],
+    "license": "MIT",
+    "homepage": "https://sinric.tel",
+    "frameworks": "Arduino",
+    "platforms": ["espressif32"],
+    "build": {
+		"flags": [
+			"-l libssh2.a"
+		]
+	}
+  }
