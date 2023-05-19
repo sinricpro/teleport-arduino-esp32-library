@@ -1,6 +1,6 @@
 # Sinric Teleport Library
 
-Sinric Teleport helps you to to securely access your ESP32 over the internet from anywhere in the world. For more information, visit https://sinric.tel.
+Sinric Teleport helps you to to securely access your ESP32 (esp32, esp32c3, esp32s2, esp32s3) over the internet from anywhere in the world. For more information, visit https://sinric.tel.
 
 **This library supports only ESP32.**
 
