@@ -24,12 +24,17 @@ const int bdrLen = strlen(BOUNDARY);
 const int cntLen = strlen(CTNTTYPE);
 const int jhdLen = strlen(JHEADER);
 
-// Copy and paste your public/private keys from console.sinric.tel.
+
+/* 
+// If you are a registered user, get your public/private keys from console.sinric.tel.
+
 const char * pubkey = "";
 const char * privkey = "";
-
-/* Expose ESP32 Cam webserver running on port 80 via Sinric Teleport */
 SinricTeleport teleport(pubkey, privkey, "127.0.0.1", 80);
+*/
+
+// Unregistered user.
+SinricTeleport teleport("127.0.0.1", 80);
 
 void handle_jpg_stream(void) {
   char buf[32];
@@ -119,10 +124,10 @@ void setup_camera() {
 void setup_teleport() {
   teleport.onConnected([](const char *sessionUrl) {
     Serial.printf("[Teleport]: Connected to Teleport!!!\r\n");
-    Serial.printf("========================================================\r\n");
+    Serial.printf("=============================================================================================\r\n");
     Serial.printf("Public Camera Streaming URL : https://%s/mjpeg/1\r\n", sessionUrl);
     Serial.printf("Public Camera Snapshot  URL : https://%s/jpg\r\n", sessionUrl);
-    Serial.printf("========================================================\r\n");
+    Serial.printf("=============================================================================================\r\n");
   });
 
   teleport.onDisconnected([](const char *reason) {
