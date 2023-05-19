@@ -7,8 +7,12 @@ Sinric Teleport helps you to to securely access your ESP32 over the internet fro
 ## How to use this library
 
 1. Search for SinricTeleport in Arduino Library Manager or Clone this repo to C:\Users\<user>\Documents\Arduino\libraries\
-2. Update the example sketch with your WiFi credentials and flash.
-3. Endopint is displayed in the Arduino Serial Monitor and https://sinric.tel dashboard.
+
+![image](https://github.com/sinricpro/teleport-arduino-esp32-library/assets/7474406/7fbc56a8-b052-42b6-9c3e-083f64ddb42f)
+
+
+3. Update the example sketch with your WiFi credentials and flash.
+4. Endopint is displayed in the Arduino Serial Monitor and https://sinric.tel dashboard.
 
 ![Sinric Teleport Session](https://github.com/sinricpro/teleport-arduino-esp32-library/blob/main/examples/webserver/img/teleport-endpoint.png?raw=true)
 
