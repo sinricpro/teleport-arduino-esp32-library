@@ -227,9 +227,9 @@ void setup_webserver() {
 void setup_teleport() { 
   teleport.onConnected([] (const char * sessionUrl) {
     Serial.printf("[Teleport]: Connected to Teleport!!!\r\n");
-    Serial.printf("========================================================\r\n");
+    Serial.printf("=============================================================================================\r\n");
     Serial.printf("HTTP : https://%s/edit  to see the file browser\r\n", sessionUrl);
-    Serial.printf("========================================================\r\n");
+    Serial.printf("=============================================================================================\r\n");
   });
 
   teleport.onDisconnected([] (const char * reason) {

@@ -53,9 +53,9 @@ void setup_wifi() {
 void setup_teleport() { 
   teleport.onConnected([] (const char * sessionUrl) {
     Serial.printf("[Teleport]: Connected to Teleport!!!\r\n");
-    Serial.printf("========================================================\r\n");
+    Serial.printf("=============================================================================================\r\n");
     Serial.printf("HTTP : https://%s\r\n", sessionUrl);
-    Serial.printf("========================================================\r\n");
+    Serial.printf("=============================================================================================\r\n");
   });
 
   teleport.onDisconnected([] (const char * reason) {

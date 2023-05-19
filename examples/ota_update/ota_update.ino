@@ -71,9 +71,9 @@ void setup_ota_webserver() {
 void setup_teleport() { 
   teleport.onConnected([] (const char * sessionUrl) {
     Serial.printf("[Teleport]: Connected to Teleport!!!\r\n");
-    Serial.printf("========================================================\r\n");
+    Serial.printf("=============================================================================================\r\n");
     Serial.printf("OTA URL : https://%s\r\n", sessionUrl);
-    Serial.printf("========================================================\r\n");
+    Serial.printf("=============================================================================================\r\n");
   });
 
   /*
