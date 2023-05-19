@@ -11,3 +11,5 @@ available: ```esp32cam_ttgo_t_config``` , ```esp32cam_config```, ```esp32cam_ait
 4. Endopint is displayed in Arduino Serial Monitor.
 5. Goto HTTP : https://your-endpoint.sinric.tel.
 6. Your ESP32 camera stream is available.
+
+ ![Sinric Teleport to view the ESP32 logs from anywhere](https://github.com/sinricpro/teleport-arduino-esp32-library/blob/main/examples/esp32cam/img/esp32-camera-streaming.png?raw=true)
