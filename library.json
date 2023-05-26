@@ -1,6 +1,6 @@
 {
     "name": "SinricTeleport",
-    "version": "1.1.1",
+    "version": "1.2.1",
     "description": "The simple way to access your ESP32 over internet from anywhere in the world",
     "keywords": "WiFi, Terminal, ESP32 over internet, ESP32 anywhere",
     "repository":
