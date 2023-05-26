@@ -31,6 +31,7 @@ jobs:
             libraries: |
               - source-path: ./
               - source-url: "https://github.com/geeksville/Micro-RTSP.git"
+              - source-url: "https://github.com/sivar2311/WebMonitor.git"
             sketch-paths:
 
     steps:
