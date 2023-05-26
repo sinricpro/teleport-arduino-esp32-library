@@ -133,7 +133,9 @@ void setup_teleport() {
   teleport.onDisconnected([](const char *reason) {
     Serial.printf("[Teleport]: Disconnected!!!\r\n");
     Serial.printf("%s\r\n", reason);
-    // system_reboot();
+    Serial.println("Restarting ESP in 5 secs..");
+    delay(5000);
+    ESP.restart();  
   });
 
   Serial.printf("[Teleport]: Connecting to Teleport..\r\n");
