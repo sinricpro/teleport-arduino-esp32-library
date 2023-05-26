@@ -7,7 +7,7 @@
 
 #pragma once
 
-#define SINRIC_TELEPORT_VERSION "1.1.1"
+#define SINRIC_TELEPORT_VERSION "1.2.1"
 
 #ifdef ENABLE_SINRIC_TELEPORT_LOG
   #ifdef DEBUG_ESP_PORT
