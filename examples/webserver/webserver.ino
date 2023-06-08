@@ -7,9 +7,6 @@
 const char *ssid = "";
 const char *wifi_password = ""; 
 
-const char * pubkey = "";
-const char * privkey = "";
-
 WebServer server(80);
 
 /* Expose WebServer running on port 80 via Sinric Teleport */
@@ -23,7 +20,7 @@ SinricTeleport teleport("127.0.0.1", 80);
 //SinricTeleport teleport(pubkey, privkey, "localhost", 80);
 
 void handle_root() {
-  String HTML = "<!DOCTYPE html><html><body><h1>Hello !</h1></body></html>";
+  String HTML = "<!DOCTYPE html><html><body><h1>Hello Teleport!</h1></body></html>";
   server.send(200, "text/html", HTML);
 }
 
