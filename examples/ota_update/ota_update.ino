@@ -2,21 +2,27 @@
 #include <WiFiClient.h>
 #include <WebServer.h>
 #include <Update.h>
-#include "SinricTeleport.h"
+#include "SinricTeleport.h" // Install SinricTeleport via Library manager get it from https://github.com/sinricpro/teleport-arduino-esp32-library
 
 #define BAUD_RATE 115200
 
 const char *ssid = "";
 const char *wifi_password = ""; 
 
-const char * pubkey = "";
-const char * privkey = "";
 
 WebServer server(80);
 const char* serverIndex = "<form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update'><input type='submit' value='Update'></form>";
 
 /* Expose OTA WebServer running on port 80 via Sinric Teleport */
-SinricTeleport teleport(pubkey, privkey, "127.0.0.1", 80);
+
+// If you do not have a Teleport account.
+SinricTeleport teleport("127.0.0.1", 80); 
+
+// If you have an account get the keys from console.sinric.tel and update blow .
+//const char * pubkey = "";
+//const char * privkey = "";
+//SinricTeleport teleport(pubkey, privkey, "localhost", 80);
+
 
 void setup_wifi() {
   Serial.printf("\r\n[Wifi]: Connecting");

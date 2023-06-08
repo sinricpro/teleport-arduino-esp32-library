@@ -13,7 +13,7 @@
 #include <WiFiClient.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
-#include "SinricTeleport.h" // Include Sinric Teleport
+#include "SinricTeleport.h" // Install SinricTeleport via Library manager get it from https://github.com/sinricpro/teleport-arduino-esp32-library
 #include "Utils.h"
 
 const char* ssid = "";
@@ -25,15 +25,13 @@ WebServer server(80);
 
 /* Expose WebServer running on port 80 via Sinric Teleport */
 
-/* 
-// Registered user.
-const char * pubkey = "";
-const char * privkey = "";
-SinricTeleport teleport(pubkey, privkey, "127.0.0.1", 80);
-*/
+// If you do not have a Teleport account.
+SinricTeleport teleport("127.0.0.1", 80); 
 
-// Unregistered user.
-SinricTeleport teleport("127.0.0.1", 80);
+// If you have an account get the keys from console.sinric.tel and update blow.
+//const char * pubkey = "";
+//const char * privkey = "";
+//SinricTeleport teleport(pubkey, privkey, "localhost", 80);
 
 String getContentType(WebServer& server, String filename) {
   if (server.hasArg("download")) {

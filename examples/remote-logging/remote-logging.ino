@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include "WebMonitor.h" // Install WebMonitor via Library manager or get it from https://github.com/sivar2311/WebMonitor
-#include "SinricTeleport.h"
+#include "SinricTeleport.h" // Install SinricTeleport via Library manager get it from https://github.com/sinricpro/teleport-arduino-esp32-library
 #include <WiFi.h>
 
 const char*    wifi_ssid = "";
@@ -13,15 +13,13 @@ AsyncWebServer server(port);
 
 /* Expose AsyncWebServer running on port 80 via Sinric Teleport */
 
-/* 
-// Registered user.
-const char * pubkey = "";
-const char * privkey = "";
-SinricTeleport teleport(pubkey, privkey, "127.0.0.1", port);
-*/
+// If you do not have a Teleport account.
+SinricTeleport teleport("127.0.0.1", 80); 
 
-// Unregistered user.
-SinricTeleport teleport("127.0.0.1", port);
+// If you have an account get the keys from console.sinric.tel and update blow.
+//const char * pubkey = "";
+//const char * privkey = "";
+//SinricTeleport teleport(pubkey, privkey, "localhost", 80);
 
 
 void setup_teleport() { 

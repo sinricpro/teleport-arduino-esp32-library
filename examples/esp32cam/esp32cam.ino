@@ -1,6 +1,6 @@
 #include <WebServer.h>
-#include "OV2640.h"
-#include "SinricTeleport.h"
+#include "OV2640.h" // https://github.com/geeksville/Micro-RTSP
+#include "SinricTeleport.h" // Install SinricTeleport via Library manager get it from https://github.com/sinricpro/teleport-arduino-esp32-library
 
 #define BAUD_RATE 115200
 
@@ -25,16 +25,13 @@ const int cntLen = strlen(CTNTTYPE);
 const int jhdLen = strlen(JHEADER);
 
 
-/* 
-// If you are a registered user, get your public/private keys from console.sinric.tel.
+// if you do not have a Teleport account.
+SinricTeleport teleport("127.0.0.1", 80); 
 
-const char * pubkey = "";
-const char * privkey = "";
-SinricTeleport teleport(pubkey, privkey, "127.0.0.1", 80);
-*/
-
-// Unregistered user.
-SinricTeleport teleport("127.0.0.1", 80);
+// If you have an account get the keys from console.sinric.tel and update blow.
+//const char * pubkey = "";
+//const char * privkey = "";
+//SinricTeleport teleport(pubkey, privkey, "localhost", 80);
 
 void handle_jpg_stream(void) {
   char buf[32];

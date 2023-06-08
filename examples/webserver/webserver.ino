@@ -13,7 +13,14 @@ const char * privkey = "";
 WebServer server(80);
 
 /* Expose WebServer running on port 80 via Sinric Teleport */
-SinricTeleport teleport(pubkey, privkey, "127.0.0.1", 80);
+
+// if you do not have a Teleport account.
+SinricTeleport teleport("127.0.0.1", 80); 
+
+// If you have an account, Get the keys from console.sinric.tel and update blow .
+//const char * pubkey = "";
+//const char * privkey = "";
+//SinricTeleport teleport(pubkey, privkey, "localhost", 80);
 
 void handle_root() {
   String HTML = "<!DOCTYPE html><html><body><h1>Hello !</h1></body></html>";
@@ -53,6 +60,7 @@ void setup_teleport() {
     
     Serial.println("Restarting ESP in 5 secs..");
     delay(5000);
+    ESP.restart();
   });
 
   Serial.printf("[Teleport]: Connecting to Teleport..\r\n");
