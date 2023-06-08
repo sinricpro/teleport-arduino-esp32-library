@@ -33,6 +33,7 @@ jobs:
               - source-url: "https://github.com/geeksville/Micro-RTSP.git"
               - source-url: "https://github.com/sivar2311/WebMonitor.git"
               - source-url: "https://github.com/me-no-dev/ESPAsyncWebServer.git"
+              - source-url: "https://github.com/me-no-dev/AsyncTCP.git"
             sketch-paths:
 
     steps:
