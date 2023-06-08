@@ -7,20 +7,25 @@
 const char *ssid = ""; /* Change this */
 const char *wifi_password = "";  /* Change this */
 
-const char * pubkey = ""; /* Change this */
-const char * privkey = ""; /* Change this */
-
 WebServer server(80);
+
+/* Expose WebServer running on port 80 via Sinric Teleport */
+
+// if you do not have a Teleport account.
+SinricTeleport teleport("127.0.0.1", 80); 
+
+// If you have an account, Get the keys from console.sinric.tel and update below.
+//const char * pubkey = "";
+//const char * privkey = "";
+//SinricTeleport teleport(pubkey, privkey, "localhost", 80);
+ 
 
 const char* www_username = "admin"; // Prompt user name
 const char* www_password = "teleport"; // Prompt password
 
 const char* www_realm = "Custom Auth Realm"; // allows you to set the realm of authentication Default:"Login Required"
 String authFailResponse = "Authentication Failed"; // the Content of the HTML response in case of Unautherized Access Default:empty
-
-/* Expose WebServer running on port 80 via Sinric Teleport */
-SinricTeleport teleport(pubkey, privkey, "127.0.0.1", 80);
-
+ 
 void handle_root() {
   /* Authenticate */
   if (!server.authenticate(www_username, www_password)) {
@@ -63,6 +68,7 @@ void setup_teleport() {
     Serial.printf("%s\r\n", reason);
     Serial.println("Restarting ESP in 5 secs..");
     delay(5000);
+    ESP.restart();
   });
 
   Serial.printf("[Teleport]: Connecting to Teleport..\r\n");

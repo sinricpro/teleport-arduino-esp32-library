@@ -14,7 +14,7 @@ WebServer server(80);
 // if you do not have a Teleport account.
 SinricTeleport teleport("127.0.0.1", 80); 
 
-// If you have an account, Get the keys from console.sinric.tel and update blow .
+// If you have an account, Get the keys from console.sinric.tel and update below.
 //const char * pubkey = "";
 //const char * privkey = "";
 //SinricTeleport teleport(pubkey, privkey, "localhost", 80);
